@@ -88,6 +88,12 @@ namespace adjudicator
 
 	void GSSWAdjudicator::mapAllele(IAllele::SharedPtr allelePtr, MappingAlignmentInfo::SharedPtr mappingAlignmentInfoPtr, IMapping::SharedPtr mappingPtr, IAlignment::SharedPtr alignmentPtr, bool checkAllelePrefix, bool checkAlleleSuffix)
 	{
+		// capture reads here
+		// Here we should call a new function in the GSSWMapping (virtualled out in the IMapping) to write out the read.
+		// If I'm getting this right, the function (having access to the GSSWMapping->node structs) will have both the read
+		// info and the ref info, to create both a fastq and the bam, but I'm not certain if that's right.
+		// mappingPtr->outputRefs(alignmentPtr);
+
 		auto variantPtr = allelePtr->getVariantWPtr().lock();
 		auto alleleMappingScorePercent = ((mappingAlignmentInfoPtr->getSWScore() / (double)(mappingAlignmentInfoPtr->getLength() * this->m_match_value)) * 100);
 

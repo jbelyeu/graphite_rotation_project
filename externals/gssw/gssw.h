@@ -135,6 +135,7 @@ typedef struct {
 
 typedef struct {
     int32_t position; // position in first node
+    int32_t graph_start_position; // identifies graph the struct belongs to
     int16_t score;
     gssw_graph_cigar cigar;
 } gssw_graph_mapping;
@@ -332,7 +333,7 @@ gssw_graph_mapping* gssw_graph_trace_back (gssw_graph* graph,
                                            int32_t mismatch,
                                            int32_t gap_open,
                                            int32_t gap_extension);
-    
+
 /*! @function         Return 1 if the alignment is in 16/128bit (byte sized) or 0 if word-sized.
     @param alignment  Alignment structure.
 */

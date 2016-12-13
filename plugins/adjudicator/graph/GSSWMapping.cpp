@@ -4,6 +4,9 @@
 #include <iostream>
 #include <thread>
 
+#include <fstream>
+#include <sstream>
+
 namespace graphite
 {
 namespace adjudicator
@@ -34,6 +37,13 @@ namespace adjudicator
 
 	std::vector< MappingAlignmentInfo::SharedPtr > GSSWMapping::getMappingAlignmentInfoPtrs(IAdjudicator::SharedPtr adjudicatorPtr)
 	{
+    static std::mutex smutex;
+		std::lock_guard< std::mutex > guard(smutex);
+    static std::atomic<bool> fasta_written(false);
+    std::string fasta_seq = "";
+    uint32_t start_pos = -1;
+    bool switchcase = true;
+
 		std::vector< MappingAlignmentInfo::SharedPtr > mappingAlignmentInfoPtrs;
 		gssw_node_cigar* nc = this->m_gssw_mapping_ptr->cigar.elements;
 		for (int i = 0; i < this->m_gssw_mapping_ptr->cigar.length; ++i, ++nc)
@@ -43,6 +53,12 @@ namespace adjudicator
 			uint32_t prefixMatch = 0;
 			uint32_t suffixMatch = 0;
 			auto allelePtr = ((IAllele*)nc->node->data)->getSharedPtr();
+      fasta_seq += std::string(nc->node->seq);
+      if (!fasta_written)
+      {
+        std::string seq = std::string(nc->node->seq);
+        std::cout << seq.size();
+      }
 			for (int j = 0; j < nc->cigar->length; ++j)
 			{
 				switch (nc->cigar->elements[j].type)
@@ -70,6 +86,41 @@ namespace adjudicator
 			auto mappingAlignmentInfo = std::make_shared< MappingAlignmentInfo >(allelePtr, score, length, prefixMatch, suffixMatch);
 			mappingAlignmentInfoPtrs.emplace_back(mappingAlignmentInfo);
 		}
+    if (!fasta_written)
+    {
+      std::ofstream fasta_file;
+      std::stringstream fasta_name;
+      //TODO hardcoded output path. Needs fixing.
+      fasta_name << "/uufs/chpc.utah.edu/common/home/u1072557/marthlab/" << this->m_gssw_mapping_ptr->graph_start_position <<".fa";
+      fasta_file.open(fasta_name.str());
+      std::string referenceString;
+
+      //TODO this is a hacky fix for the reference offset. A much better option would be decrementing the read positions,
+      //but some (especially the mate positions) become negative because they're before the official graph_start_position
+      // for (uint32_t i = 0; i < 498; ++i)
+      // {
+      //   referenceString += "N";
+      // }
+      referenceString += fasta_seq;
+      fasta_file <<">chr20\n";
+      for (uint32_t i = 0; i < referenceString.size(); ++i)
+      {
+        //TODO I hardcoded the length of the lines for the fasta.
+        //We should at the least move this to a class member, or maybe a command-line arg if we're fancy
+        if (i > 0 && i%80 == 0)
+        {
+          fasta_file <<std::endl;
+        }
+        fasta_file << referenceString[i];
+      }
+
+      fasta_written = true;
+    }
+    // call function to write alignment to sam
+    this->outputSAMEntry(this->m_alignment_ptr);
+
+
+
 		return mappingAlignmentInfoPtrs;
 	}
 
@@ -164,6 +215,76 @@ namespace adjudicator
 			}
 		}
 	}
+
+
+
+  void GSSWMapping::outputSAMEntry(IAlignment::SharedPtr alignmentPtr)
+  {
+    //TODO: seems odd for the -2 to work. That's probably a bug and may be related to the offset reads
+    uint32_t read_offset = this->m_gssw_mapping_ptr->graph_start_position-2;
+    int32_t position = this->m_alignment_ptr->getPosition()-this->m_gssw_mapping_ptr->graph_start_position;
+
+    //TODO need a better solution to this problem. I think we should consider clipping
+    //off the reads that start before the graph starts, but the cigar string will need
+    //to be modified to reflect that. The reads that are being removed here are generally
+    //poor matches and may show a problem of some kind in the graph creation.
+    if (position <= 0)
+    {
+      return;
+    }
+
+    std::ofstream outfile;
+    std::stringstream name;
+    //TODO here the filepath is also hardcoded and needs fixing
+		name << "/uufs/chpc.utah.edu/common/home/u1072557/marthlab/reads.sam";
+		outfile.open(name.str(), std::ios::out | std::ios::app);
+
+    std::vector<std::pair<int32_t, char>> cigar_strings = this->extractCigar();
+    std::string stringified_cigar = stringifySimpleCigar(cigar_strings);
+    outfile << this->m_alignment_ptr->getID() << "\t";
+    outfile << this->m_alignment_ptr->getFlag() << "\t";
+    outfile << "chr" << this->m_alignment_ptr->getChrID() +1 << "\t";
+    outfile << (this->m_alignment_ptr->getPosition()-read_offset) << "\t";
+    outfile << this->m_alignment_ptr->getOriginalMapQuality() << "\t";
+    outfile << stringified_cigar << "\t";
+    outfile << "chr" << this->m_alignment_ptr->getRefNext() << "\t";
+    int32_t pos_next = (this->m_alignment_ptr->getPositionNext()-read_offset);
+
+    //TODO this is just to avoid the samtools error for mates mapped to 0. Probably shouldn't be done.
+    if (pos_next <= 0)
+    {
+      pos_next = 1;
+    }
+    outfile << pos_next << "\t";
+    outfile << this->m_alignment_ptr->getTemplateLength() << "\t";
+    outfile << alignmentPtr->getSequence() << "\t";
+    //TODO: this is hardcoded QUAL info. I couldn't find a way to easily parse it out for the SAM. so I hard-coded it to speed things up.
+    outfile << "000770<<B<B7B<<7<BBB<B0<B<0<<00BB0<<BBBB<BBBBB0<B<<BB<<<<B0BB0<<BB<0BBBB<BB<BB00<<BBBBB00<007<B<BB00BB<BB<BBBBB<00<<<B<BBB07<B	AS:i:126	MC:Z:126M	MQ:i:0	XA:Z:chrX,-156022948,126M,0;chr1,+187516,126M,0;chr16,+16677,126M,0;chr12,+17109,126M,0;chr15,-101973841,126M,0;chr2,-113596317,126M,1;chr9,+17105,126M,2;chr12_GL877875v1_alt,+7109,126M,0;	XS:i:126	MD:Z:126	NM:i:0RG:Z:ERR894730\n";
+  }
+
+  std::string GSSWMapping::stringifySimpleCigar(std::vector<std::pair<int32_t, char>> simple_cigar)
+  {
+    std::stringstream ss;
+    for (auto iter = simple_cigar.begin(); iter != simple_cigar.end(); ++iter)
+    {
+      ss << iter->first << iter->second;
+    }
+    return ss.str();
+  }
+
+  std::vector<std::pair<int32_t, char>> GSSWMapping::extractCigar()
+  {
+    std::vector<std::pair<int32_t, char>> simple_cigar;
+    for (uint32_t i = 0; i < this->m_gssw_mapping_ptr->cigar.length; ++i)
+    {
+      for (uint32_t j = 0; j < this->m_gssw_mapping_ptr->cigar.elements[i].cigar->length; ++j)
+      {
+        simple_cigar.emplace_back(this->m_gssw_mapping_ptr->cigar.elements[i].cigar->elements[j].length,
+          this->m_gssw_mapping_ptr->cigar.elements[i].cigar->elements[j].type);
+      }
+    }
+    return simple_cigar;
+  }
 
 	void GSSWMapping::addAlleleCountCallback(std::function< void () > functor)
 	{

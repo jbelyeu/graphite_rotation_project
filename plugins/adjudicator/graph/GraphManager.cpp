@@ -108,6 +108,7 @@ namespace adjudicator
 		IAlignment::SharedPtr alignmentPtr;
 		while (alignmentListPtr->getNextAlignment(alignmentPtr))
 		{
+			// std::cout << alignmentPtr->getSequence() <<std::endl;
 			auto gsswMappingPtr = std::make_shared< GSSWMapping >(gsswGraphPtr->traceBackAlignment(alignmentPtr), alignmentPtr);
 			MappingManager::Instance()->registerMapping(gsswMappingPtr);
 		}

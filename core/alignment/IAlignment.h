@@ -27,6 +27,12 @@ namespace graphite
 		virtual const char* getSequence() = 0;
 		virtual const position getPosition() = 0;
 		virtual const size_t getLength() = 0;
+		virtual const uint32_t getFlag() {return this->m_flag; };
+		virtual const uint32_t getTemplateLength() {return this->m_template_len; };
+		virtual const uint32_t getQual() {return this->m_qual; };
+		virtual const uint32_t getChrID() {return this->m_chr_id; };
+		virtual const uint32_t getPositionNext() {return this->m_pos_next; };
+		virtual const uint32_t getRefNext() {return this->m_ref_next; };
 		virtual const std::string getID() { return ""; }
 		virtual const bool isFirstMate() { return false;}
 		virtual const bool isMapped() { return false; }
@@ -43,6 +49,12 @@ namespace graphite
 		const std::shared_ptr< Sample > getSample() { return m_sample_ptr; }
 
 		virtual const void setSequence(char* seq, uint32_t len) = 0;
+		virtual const void setFlag(uint32_t flag) { m_flag = flag; }
+		virtual const void setTemplateLength(uint32_t tlen) { m_template_len = tlen; }
+		virtual const void setQual(uint32_t qual) { m_qual = qual; }
+		virtual const void setChrID(uint32_t chr_id) { m_chr_id = chr_id; }
+		virtual const void setPositionNext(uint32_t pos_next) { m_pos_next = pos_next; }
+		virtual const void setRefNext(uint32_t ref_next) { m_ref_next = ref_next; }
 		virtual const void removeSequence() = 0;
 		virtual const void incrementReferenceCount() = 0;
 
@@ -52,6 +64,12 @@ namespace graphite
 		std::weak_ptr< IMapping > m_mapping_wptr;
 		std::recursive_mutex* m_mapping_mutex;
 		std::shared_ptr< Sample > m_sample_ptr;
+		uint32_t m_flag;
+		uint32_t m_template_len;
+		uint32_t m_qual;
+		uint32_t m_chr_id;
+		uint32_t m_pos_next;
+		uint32_t m_ref_next;
 	};
 }
 

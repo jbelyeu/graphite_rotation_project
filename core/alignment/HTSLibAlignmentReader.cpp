@@ -2,7 +2,8 @@
 #include "HTSLibAlignment.h"
 #include "SampleManager.hpp"
 #include "core/util/Utility.h"
-
+#include <typeinfo>
+#include <sstream>
 #include <string.h>
 
 namespace graphite
@@ -92,6 +93,15 @@ namespace graphite
 		return samplePtrs;
 	}
 
+
+	std::string HTSLibAlignmentReader::GetBamHeader(const std::string& bamPath)
+	{
+		auto readerPtr = std::make_shared< HTSLibAlignmentReader >(bamPath);
+		readerPtr->open();
+		std::string header_string = std::string(readerPtr->m_bam_header->text);
+		return header_string;
+	}
+
 	std::vector< IAlignment::SharedPtr > HTSLibAlignmentReader::loadAlignmentsInRegion(Region::SharedPtr regionPtr, bool excludeDuplicateReads)
 	{
 		std::lock_guard< std::mutex > l(m_lock);
@@ -121,9 +131,37 @@ namespace graphite
 			alignmentPtr->setName(bam_get_qname(m_bam_alignment), (m_bam_alignment->core.flag & 0x0040));
 			alignmentPtr->setDuplicate(m_bam_alignment->core.flag & 0x00400);
 			alignmentPtr->setFilePosition(bgzf_tell(m_fp->fp.bgzf));
+
+			alignmentPtr->setFlag(m_bam_alignment->core.flag);
+			//TODO isize is not the right answer for these.
+			// It seems to work for the purposes of just viewing in IGV,
+			// but the lengths are coming out negative and just overflowing back to int values
+			alignmentPtr->setTemplateLength(m_bam_alignment->core.isize);
+			alignmentPtr->setQual(m_bam_alignment->core.qual);
+			alignmentPtr->setChrID(m_bam_alignment->core.tid);
+			alignmentPtr->setPositionNext(m_bam_alignment->core.mpos);
+			alignmentPtr->setRefNext(m_bam_alignment->core.mtid);
+
 			alignmentPtrs.emplace_back(alignmentPtr);
+			// std::cout <<m_bam_alignment->core.tid << 			" ";
+			// std::cout <<m_bam_alignment->core.pos << 			" ";
+			// std::cout <<m_bam_alignment->core.bin << 			" ";
+			// std::cout <<m_bam_alignment->core.qual << 		" ";
+			// std::cout <<m_bam_alignment->core.l_qname << 	" ";
+			// std::cout <<m_bam_alignment->core.flag << 		" ";
+			// std::cout <<m_bam_alignment->core.n_cigar << 	" ";
+			// std::cout <<m_bam_alignment->core.l_qseq << 	" ";
+			// std::cout <<m_bam_alignment->core.mtid << 		" ";
+			// std::cout <<m_bam_alignment->core.mpos << 		" ";
+			// std::cout <<m_bam_alignment->core.isize << 		"\n";
 
 			uint8_t* q = bam_get_seq(m_bam_alignment); //quality string
+			uint8_t* qual = bam_get_qual(m_bam_alignment);
+
+
+
+
+
 			for(int i=0; i < len; ++i)
 			{
 				qseq[i] = seq_nt16_str[bam_seqi(q,i)]; //gets nucleotide id and converts them into IUPAC id.

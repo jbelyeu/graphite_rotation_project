@@ -151,6 +151,16 @@ int main(int argc, char** argv)
 		// auto tmpSamplePtrs = graphite::BamAlignmentReader::GetBamReaderSamples(bamPath);
 		auto tmpSamplePtrs = graphite::HTSLibAlignmentReader::GetBamReaderSamples(bamPath);
 		samplePtrs.insert(samplePtrs.end(), tmpSamplePtrs.begin(), tmpSamplePtrs.end());
+
+		// TODO this pretty hacky, even aside from hardcoding the filename.
+		// The reads are all going into the same file just because it's easier right now.
+		// It's also not handing multiple input files
+		std::ofstream bam_file;
+		std::stringstream bam_name;
+		bam_name << "/uufs/chpc.utah.edu/common/home/u1072557/marthlab/reads.sam";
+		bam_file.open(bam_name.str());
+		bam_file << graphite::HTSLibAlignmentReader::GetBamHeader(bamPath);
+
 	}
 	for (auto samplePtr : samplePtrs)
 	{

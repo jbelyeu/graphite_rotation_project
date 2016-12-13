@@ -128,6 +128,7 @@ namespace adjudicator
 	{
 		gssw_graph_fill(this->m_graph_ptr, alignmentPtr->getSequence(), alignmentPtr->getLength(), this->m_nt_table, this->m_mat, this->m_gap_open, this->m_gap_extension, 15, 2);
 		gssw_graph_mapping* graphMapping = gssw_graph_trace_back(this->m_graph_ptr, alignmentPtr->getSequence(), alignmentPtr->getLength(),m_match,m_mismatch,m_gap_open,m_gap_extension);
+		graphMapping->graph_start_position = this->m_start_position;
 		gssw_node_cigar* nc = graphMapping->cigar.elements;
 		for (int i = 0; i < graphMapping->cigar.length; ++i, ++nc)
 		{

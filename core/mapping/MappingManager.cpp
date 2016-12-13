@@ -77,6 +77,14 @@ namespace graphite
 		}
 	}
 
+	void MappingManager::showRegisteredMappings()
+	{
+		for (auto iter : this->m_mappings)
+		{
+			iter->printMapping();
+		}
+	}
+
 	void MappingManager::clearRegisteredMappings()
 	{
 		this->m_mappings.clear();

@@ -21,6 +21,7 @@ namespace graphite
 		HTSLibAlignmentReader(const std::string& filePath, AlignmentReaderManager< HTSLibAlignmentReader >* alignmentReaderManager);
 		~HTSLibAlignmentReader();
 
+		static std::string GetBamHeader(const std::string& bamPath);
 		static std::vector< Sample::SharedPtr > GetBamReaderSamples(const std::string& bamPath);
 		/* std::vector< IAlignment::SharedPtr > loadAlignmentsInRegion(Region::SharedPtr regionPtr, bool excludeDuplicateReads = false); */
 		std::vector< IAlignment::SharedPtr > loadAlignmentsInRegion(Region::SharedPtr regionPtr, bool excludeDuplicateReads = false) override;
